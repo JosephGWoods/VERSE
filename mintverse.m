@@ -36,7 +36,9 @@ if isempty(gmax); error('gmax must not be empty.'); end
 if isempty(smax); error('smax must not be empty.'); end
 
 if ~exist('emax','var') || isempty(emax)
-    [bv, gv] = mintverse_mex(b1, g, dt, bmax, gmax, smax);
-else
-    [bv, gv] = mintverse_mex(b1, g, dt, bmax, gmax, smax, emax);
+    emax = -1;
+end
+
+[bv, gv] = mintverse_mex(b1, g, dt, bmax, gmax, smax, emax);
+
 end

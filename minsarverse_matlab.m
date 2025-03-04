@@ -138,6 +138,8 @@ b1v = brv + 1i*biv;
                 bi(count) = bi(count) / frac;
                 g(count)  =  g(count) / frac;
                 dt(count) = dt(count) * frac;
+            else
+                print("minimizesar(): Zero-RF (%d) ignored.\n",count);
             end
         end
     end

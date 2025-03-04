@@ -205,29 +205,30 @@ gv  = interp1(tv, gv , t, 'linear', 'extrap');
 b1v = brv + 1i*biv;
 
     % Shrink non-adjusted points to maintain a fixed duration
-    function stretch = adjusttimedilate(stretch, dt, T, indfix)
+    function dilate = adjusttimedilate(dilate, dt, T, indfix)
         indfix([1,end]) = true;             % Don't adjust first and last values!
 
         Tp     = sum(dt);                   % Total pulse duration
         Tpfix  = sum(dt(indfix));           % Total fixed pulse duration
-        shrink = (T-Tpfix) / (Tp-Tpfix);    % Fraction to reduce blocks by
+        factor = (T-Tpfix) / (Tp-Tpfix);    % Fraction to reduce blocks by
 
-        stretch(~indfix) = stretch(~indfix) * shrink; % Only adjust blocks that aren't fixed
+        dilate(~indfix) = dilate(~indfix) * factor; % Only adjust blocks that aren't fixed
     end
 
     % Compress non-adjusted points to maintain a fixed duration
     function [br, bi, g, dt] = adjusttime(br, bi, g, dt, gmax, T, indfix)
         indfix([1,end]) = true;             % Don't adjust first and last values!
+        indfix(sqrt(br(count)^2+bi(count)^2)<1e-12) = true; % Don't adjust points of zero RF!
         indfix(abs(g-gmax)<1e-12) = true;   % Don't adjust points of max gradient!
 
         Tp     = sum(dt);                   % Total pulse duration
         Tpfix  = sum(dt(indfix));           % Total fixed pulse duration
-        compress = (T-Tpfix) / (Tp-Tpfix);    % Fraction to reduce blocks by
+        factor = (T-Tpfix) / (Tp-Tpfix);    % Fraction to reduce blocks by
 
-        br(~indfix) = br(~indfix) / compress; % Only adjust blocks that aren't fixed
-        bi(~indfix) = bi(~indfix) / compress;
-         g(~indfix) = g(~indfix)  / compress;
-        dt(~indfix) = dt(~indfix) * compress;
+        br(~indfix) = br(~indfix) / factor; % Only adjust blocks that aren't fixed
+        bi(~indfix) = bi(~indfix) / factor;
+         g(~indfix) = g(~indfix)  / factor;
+        dt(~indfix) = dt(~indfix) * factor;
     end
 
     % Adjust gradient amplitude to meet slew rate constraint

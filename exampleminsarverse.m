@@ -7,13 +7,13 @@ maxSR  = 200 *1e-2;      % T/cm/s
 dt     = 2;             % µs
 TBWP   = 10;
 offset = 0;              % mm
-slthk  = 5;              % mm
+slthk  = 1.4;              % mm
 units  = 'T';            % 'Hz', 'T', 'G' ()
 
 [B1, Gmax] = gensinc(FA, 0, RFdur, TBWP/2, TBWP/2, 'Hann', dt, units, slthk, offset); % [T, T/cm]
 
 % Create gradient option 1
-rampPoints = 1e6*Gmax/maxSR/dt;
+rampPoints = ceil(1e6*Gmax/maxSR/dt);
 G = Gmax * [(0.5:rampPoints)'/rampPoints ; ones(size(B1)) ; (rampPoints-0.5:-1:0.5)'/rampPoints];
 B1 = [zeros(rampPoints,1); B1; zeros(rampPoints,1)];
 

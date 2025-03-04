@@ -22,9 +22,6 @@
 
     Written by Joseph G. Woods, University of Oxford, May 2022
 
-    Following a similar procedure to algorithm described in Conolly et al.
-    JMR 1988 (https://doi.org/10.1016/0022-2364(88)90131-X).
-
     Adapted from Brian Hargreaves' mintverse algorithm, described in
     Hargreaves et al. MRM 2004 (https://doi.org/10.1002/mrm.20168). The code
     can be found here: http://mrsrl.stanford.edu/~brian/mintverse/
@@ -230,7 +227,7 @@ void adjusttimefixgmax(double *br, double *bi, double *g, double *dt,
     ------------------------------------------------------------ */
 {
     long count;
-    double shrink, Tp, Tpfix;
+    double factor, Tp, Tpfix;
 
     /* Never adjust first and last values! */
     indfix[0]   = 1;
@@ -245,15 +242,15 @@ void adjusttimefixgmax(double *br, double *bi, double *g, double *dt,
 
     Tp     = sumarrayd(dt,n);           /* Total pulse duration         */
     Tpfix  = sumarraycond(dt,n,indfix); /* Total fixed pulse duration   */
-    shrink = (T-Tpfix) / (Tp-Tpfix);    /* Fraction to reduce blocks by */
+    factor = (T-Tpfix) / (Tp-Tpfix);    /* Fraction to reduce blocks by */
 
     /* Only adjust blocks that weren't fixed for gmax or slew rate issues */
     for (count = 0; count < n; count++) {
         if (indfix[count] == 0) {
-            br[count] /= shrink;
-            bi[count] /= shrink;
-            g[count]  /= shrink;
-            dt[count] *= shrink;
+            br[count] /= factor;
+            bi[count] /= factor;
+            g[count]  /= factor;
+            dt[count] *= factor;
         }
     }
 }

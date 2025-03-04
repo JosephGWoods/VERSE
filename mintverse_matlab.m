@@ -479,19 +479,21 @@ function [br,bi,g,dt] = compressmax(br, bi, g, dt, n, bmax, gmax)
         bfrac = abs( sqrt(br(count)*br(count)+bi(count)*bi(count)) / bmax );
         gfrac = abs( g(count) / gmax );
 
-        if ((bfrac > gfrac) && (gfrac > 0)) % RF will be max'd */
-            br(count) = br(count) / bfrac;
-            bi(count) = bi(count) / bfrac;
-            g(count)  = g(count)  / bfrac;
-            dt(count) = dt(count) * bfrac;
+        if ((bfrac > 0) && (gfrac > 0))
+            if (bfrac > gfrac) % RF will be max'd
+                br(count) = br(count) / bfrac;
+                bi(count) = bi(count) / bfrac;
+                g(count)  = g(count)  / bfrac;
+                dt(count) = dt(count) * bfrac;
 
-        elseif (gfrac > 0) % Gradient will be max'd */
-            br(count) = br(count) / gfrac;
-            bi(count) = bi(count) / gfrac;
-            g(count)  = g(count)  / gfrac;
-            dt(count) = dt(count) * gfrac;
+            else                % Gradient will be max'd
+                br(count) = br(count) / gfrac;
+                bi(count) = bi(count) / gfrac;
+                g(count)  = g(count)  / gfrac;
+                dt(count) = dt(count) * gfrac;
+            end
         else
-            fprintf("compressmax(): Zero-gradient (%d), ignored.\n",count);
+            fprintf("compressmax(): Zero-RF or zero-gradient (%d), ignored.\n",count);
         end
     end
 end
