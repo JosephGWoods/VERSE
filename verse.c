@@ -55,6 +55,9 @@
 
 #include <math.h>   /* for M_PI   */
 #include <string.h> /* for memcpy */
+#include <stdio.h>  /* for printf */
+#include <stdlib.h> /* for malloc, free */
+#include <float.h>  /* for DBL_MAX */
 
 void multiplyarray(double *g, long *gsign, long n)
 /* ------------------------------------------------------------
