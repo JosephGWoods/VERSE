@@ -8,7 +8,6 @@ from pypulseq.make_arbitrary_rf import make_arbitrary_rf
 
 import verse_python as verse  # assumes libverse.dylib/verse.dll/libverse.so is alongside verse_python.py
 
-
 def _grad_to_waveform(g, system):
     """Return (waveform, delay, channel) from a pypulseq gradient or ndarray."""
     if isinstance(g, np.ndarray):
@@ -184,13 +183,13 @@ def minsarverse(rf, grad, max_grad=None, max_slew=None, system=None, debugLevel=
     grad_out = make_arbitrary_grad(
         channel=ch,
         waveform=gv_waveform,
-        delay=gv_delay, # avoid floating point issues
+        delay=gv_delay,
         system=system,
     )
     return rf_out, grad_out
 
 
-def mintverse(rf, grad, bmax=np.inf, emax=-1.0, max_grad=None, max_slew=None, system=None, debugLevel=0):
+def mintverse(rf, grad, bmax=None, emax=-1.0, max_grad=None, max_slew=None, system=None, debugLevel=0):
     """
     Run mintverse on pypulseq RF/gradient (or ndarray) inputs.
     Returns (arbitrary_rf, arbitrary_grad) pypulseq objects.
@@ -202,6 +201,11 @@ def mintverse(rf, grad, bmax=np.inf, emax=-1.0, max_grad=None, max_slew=None, sy
         max_grad = system.max_grad
     if max_slew is None:
         max_slew = system.max_slew
+    if bmax is None or bmax < 0:
+        if getattr(system, "max_rf", None) is not None and system.max_rf > 0:
+            bmax = system.max_rf
+        else:
+            bmax = np.max(np.sqrt(rf.signal.real**2 + rf.signal.imag**2))
 
     # Extract and pad waveforms to match lengths
     br, bi, g, dt, common_start, ch, rf_pad_front, rf_pad_back, g_pad_front, g_pad_back =_get_padded_waveforms(
@@ -229,7 +233,7 @@ def mintverse(rf, grad, bmax=np.inf, emax=-1.0, max_grad=None, max_slew=None, sy
     grad_out = make_arbitrary_grad(
         channel=ch,
         waveform=gv_waveform,
-        delay=gv_delay, # avoid floating point issues
+        delay=gv_delay,
         system=system,
     )
     return rf_out, grad_out

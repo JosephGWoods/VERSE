@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "verse-python"
+version = "0.1.0"
+description = "VERSE (Variable-rate Selective Excitation) implementation for python"
+authors = [
+    {name = "Joseph G. Woods", email = "joseph.woods@unibe.ch"}
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "pypulseq",
+]
+
+[tool.setuptools]
+py-modules = ["verse_pypulseq", "verse_python"]
+package-dir = {"" = "Python"}
