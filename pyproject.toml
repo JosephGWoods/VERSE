@@ -3,11 +3,11 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "verse-python"
+name = "pyverse"
 version = "0.1.0"
 description = "VERSE (Variable-rate Selective Excitation) implementation for python"
 authors = [
-    {name = "Joseph G. Woods", email = "joseph.woods@unibe.ch"}
+    {name = "Joseph G. Woods", email = "joseph dot woods at unibe dot ch"}
 ]
 readme = "README.md"
 requires-python = ">=3.8"
@@ -19,5 +19,5 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["verse_pypulseq", "verse_python"]
-package-dir = {"" = "Python"}
+py-modules = ["pyverse_pulseq", "pyverse_c"]
+package-dir = {"" = "python"}

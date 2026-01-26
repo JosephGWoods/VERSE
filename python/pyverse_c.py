@@ -34,48 +34,103 @@ if not os.path.exists(_lib_path):
 _lib = ctypes.CDLL(_lib_path)
 
 # Define C function signatures
+_lib.calculateoffcenterphase.argtypes = [
+    np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # g
+    ctypes.c_double,                                                 # offset
+    ctypes.c_long,                                                   # nrf
+    ctypes.c_long,                                                   # rfup
+    ctypes.c_long,                                                   # gup
+    ctypes.c_double,                                                 # gamma
+    np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # phase (out)
+]
+_lib.calculateoffcenterphase.restype = None
+
 _lib.minsarverse.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # br
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # bi
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # g
-    ctypes.c_double,                                                  # dt
-    ctypes.c_long,                                                    # n
-    ctypes.c_double,                                                  # gmax
-    ctypes.c_double,                                                  # smax
+    ctypes.c_double,                                                 # dt
+    ctypes.c_long,                                                   # n
+    ctypes.c_double,                                                 # gmax
+    ctypes.c_double,                                                 # smax
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # brv (out)
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # biv (out)
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # gv (out)
 ]
 _lib.minsarverse.restype = None
 
-_lib.calculateoffcenterphase.argtypes = [
-    np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # g
-    ctypes.c_double,                                                  # offset
-    ctypes.c_long,                                                    # nrf
-    ctypes.c_long,                                                    # rfup
-    ctypes.c_long,                                                    # gup
-    ctypes.c_double,                                                  # gamma
-    np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # phase (out)
-]
-_lib.calculateoffcenterphase.restype = None
-
 # Note: mintverse allocates memory internally, so we need a different approach
 _lib.mintverse.argtypes = [
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # br
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # bi
     np.ctypeslib.ndpointer(dtype=np.float64, flags='C_CONTIGUOUS'),  # g
-    ctypes.c_double,                                                  # dt
-    ctypes.c_long,                                                    # n
-    ctypes.c_double,                                                  # bmax
-    ctypes.c_double,                                                  # gmax
-    ctypes.c_double,                                                  # smax
-    ctypes.c_double,                                                  # emax
-    ctypes.POINTER(ctypes.c_long),                                    # nout
-    ctypes.POINTER(ctypes.POINTER(ctypes.c_double)),                  # brv
-    ctypes.POINTER(ctypes.POINTER(ctypes.c_double)),                  # biv
-    ctypes.POINTER(ctypes.POINTER(ctypes.c_double)),                  # gv
+    ctypes.c_double,                                                 # dt
+    ctypes.c_long,                                                   # n
+    ctypes.c_double,                                                 # bmax
+    ctypes.c_double,                                                 # gmax
+    ctypes.c_double,                                                 # smax
+    ctypes.c_double,                                                 # emax
+    ctypes.POINTER(ctypes.c_long),                                   # nout
+    ctypes.POINTER(ctypes.POINTER(ctypes.c_double)),                 # brv
+    ctypes.POINTER(ctypes.POINTER(ctypes.c_double)),                 # biv
+    ctypes.POINTER(ctypes.POINTER(ctypes.c_double)),                 # gv
 ]
 _lib.mintverse.restype = None
+
+
+def calculateoffcenterphase(g, offset, nrf, rfup, gup, gamma):
+    """
+    Calculate off-center slice RF phase waveform for an arbitrary gradient.
+
+    Useful for calculating variable phase variation due to off-center VERSE pulse.
+
+    Parameters
+    ----------
+    g : ndarray
+        Gradient waveform (arbitrary units)
+    offset : float
+        Slice offset (same units of distance as g)
+    nrf : int
+        Number of points in RF (allows different gradient and RF raster)
+    rfup : int
+        RF raster time (µs)
+    gup : int
+        Gradient raster time (µs)
+    gamma : float
+        Gyromagnetic ratio (Hz per same unit of field strength as g)
+
+    Returns
+    -------
+    phase : ndarray
+        Slice offset phase waveform (rad), length nrf
+
+    Notes
+    -----
+    - gup should be a multiple of rfup (not checked)
+    - Assumes pulse is symmetrical with respect to setting center phase to 0
+    - If gup > rfup, assumes g is constant during each gradient block
+    - Example units: g (T/m), offset (m), rfup (µs), gamma (Hz/T)
+      or:            g (G/cm), offset (cm), rfup (µs), gamma (Hz/G)
+      or:            g (mT/m), offset (mm), rfup (µs), gamma (MHz/T)
+    - Output phase is not phase-wrapped
+    
+    Examples
+    --------
+    >>> g = np.array([0, 5, 10, 10, 5, 0], dtype=np.float64)  # mT/m
+    >>> offset = 20e-3  # 20 mm
+    >>> gamma = 42.576e6  # Hz/T = 42.576 MHz/T = 0.042576 MHz/(mT/m)
+    >>> phase = calculateoffcenterphase(g, offset, nrf=60, rfup=10, gup=10, gamma=0.042576)
+    """
+    # Ensure g is C-contiguous float64 array
+    g = np.ascontiguousarray(g, dtype=np.float64)
+
+    # Allocate output array
+    phase = np.zeros(nrf, dtype=np.float64)
+
+    # Call C function
+    _lib.calculateoffcenterphase(g, offset, nrf, rfup, gup, gamma, phase)
+
+    return phase
 
 
 def minsarverse(br, bi, g, dt, gmax, smax):
@@ -122,13 +177,13 @@ def minsarverse(br, bi, g, dt, gmax, smax):
     --------
     >>> br = np.array([0, 1, 2, 2, 1, 0], dtype=np.float64)
     >>> bi = np.zeros(6, dtype=np.float64)
-    >>> g = np.array([0, 5, 10, 10, 5, 0], dtype=np.float64)
+    >>> g  = np.array([0, 5, 10, 10, 5, 0], dtype=np.float64)
     >>> brv, biv, gv = minsarverse(br, bi, g, dt=1e-6, gmax=15.0, smax=1e5)
     """
     # Ensure inputs are C-contiguous float64 arrays
     br = np.ascontiguousarray(br, dtype=np.float64)
     bi = np.ascontiguousarray(bi, dtype=np.float64)
-    g = np.ascontiguousarray(g, dtype=np.float64)
+    g  = np.ascontiguousarray(g , dtype=np.float64)
     
     n = len(br)
     if len(bi) != n or len(g) != n:
@@ -137,7 +192,7 @@ def minsarverse(br, bi, g, dt, gmax, smax):
     # Allocate output arrays
     brv = np.zeros(n, dtype=np.float64)
     biv = np.zeros(n, dtype=np.float64)
-    gv = np.zeros(n, dtype=np.float64)
+    gv  = np.zeros(n, dtype=np.float64)
     
     # Call C function
     _lib.minsarverse(br, bi, g, dt, n, gmax, smax, brv, biv, gv)
@@ -192,13 +247,13 @@ def mintverse(br, bi, g, dt, bmax, gmax, smax, emax=-1.0):
     --------
     >>> br = np.array([0, 1, 2, 2, 1, 0], dtype=np.float64)
     >>> bi = np.zeros(6, dtype=np.float64)
-    >>> g = np.array([0, 5, 10, 10, 5, 0], dtype=np.float64)
+    >>> g  = np.array([0, 5, 10, 10, 5, 0], dtype=np.float64)
     >>> brv, biv, gv = mintverse(br, bi, g, dt=1e-6, bmax=3.0, gmax=15.0, smax=1e5)
     """
     # Ensure inputs are C-contiguous float64 arrays
     br = np.ascontiguousarray(br, dtype=np.float64)
     bi = np.ascontiguousarray(bi, dtype=np.float64)
-    g = np.ascontiguousarray(g, dtype=np.float64)
+    g  = np.ascontiguousarray(g , dtype=np.float64)
     
     n = len(br)
     if len(bi) != n or len(g) != n:
@@ -208,7 +263,7 @@ def mintverse(br, bi, g, dt, bmax, gmax, smax, emax=-1.0):
     nout = ctypes.c_long()
     brv_ptr = ctypes.POINTER(ctypes.c_double)()
     biv_ptr = ctypes.POINTER(ctypes.c_double)()
-    gv_ptr = ctypes.POINTER(ctypes.c_double)()
+    gv_ptr  = ctypes.POINTER(ctypes.c_double)()
     
     # Call C function (it allocates memory internally)
     _lib.mintverse(br, bi, g, dt, n, bmax, gmax, smax, emax,
@@ -221,7 +276,7 @@ def mintverse(br, bi, g, dt, bmax, gmax, smax, emax=-1.0):
     nout_val = nout.value
     brv = np.ctypeslib.as_array(brv_ptr, shape=(nout_val,)).copy()
     biv = np.ctypeslib.as_array(biv_ptr, shape=(nout_val,)).copy()
-    gv = np.ctypeslib.as_array(gv_ptr, shape=(nout_val,)).copy()
+    gv  = np.ctypeslib.as_array(gv_ptr, shape=(nout_val,)).copy()
     
     # Free C-allocated memory
     ctypes.CDLL(None).free(brv_ptr)
@@ -229,59 +284,3 @@ def mintverse(br, bi, g, dt, bmax, gmax, smax, emax=-1.0):
     ctypes.CDLL(None).free(gv_ptr)
     
     return brv, biv, gv
-
-
-def calculateoffcenterphase(g, offset, nrf, rfup, gup, gamma):
-    """
-    Calculate off-center slice RF phase waveform for an arbitrary gradient.
-    
-    Useful for calculating variable phase variation due to off-center VERSE pulse.
-    
-    Parameters
-    ----------
-    g : ndarray
-        Gradient waveform (arbitrary units)
-    offset : float
-        Slice offset (same units of distance as g)
-    nrf : int
-        Number of points in RF (allows different gradient and RF raster)
-    rfup : int
-        RF raster time (µs)
-    gup : int
-        Gradient raster time (µs)
-    gamma : float
-        Gyromagnetic ratio (Hz per same unit of field strength as g)
-    
-    Returns
-    -------
-    phase : ndarray
-        Slice offset phase waveform (rad), length nrf
-    
-    Notes
-    -----
-    - gup should be a multiple of rfup (not checked)
-    - Assumes pulse is symmetrical with respect to setting center phase to 0
-    - If gup > rfup, assumes g is constant during each gradient block
-    - Example units: g (T/m), offset (m), rfup (µs), gamma (Hz/T)
-      or:            g (G/cm), offset (cm), rfup (µs), gamma (Hz/G)
-      or:            g (mT/m), offset (mm), rfup (µs), gamma (MHz/T)
-    - Output phase is not phase-wrapped
-    
-    Examples
-    --------
-    >>> g = np.array([0, 5, 10, 10, 5, 0], dtype=np.float64)  # mT/m
-    >>> offset = 20e-3  # 20 mm
-    >>> gamma = 42.576e6  # Hz/T = 42.576 MHz/T = 0.042576 MHz/(mT/m)
-    >>> phase = calculateoffcenterphase(g, offset, nrf=60, rfup=10, gup=10, gamma=0.042576)
-    """
-    # Ensure g is C-contiguous float64 array
-    g = np.ascontiguousarray(g, dtype=np.float64)
-    
-    # Allocate output array
-    phase = np.zeros(nrf, dtype=np.float64)
-    
-    # Call C function
-    _lib.calculateoffcenterphase(g, offset, nrf, rfup, gup, gamma, phase)
-    
-    return phase
-
