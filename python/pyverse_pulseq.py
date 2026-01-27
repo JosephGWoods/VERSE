@@ -19,8 +19,7 @@ def _grad_to_waveform(g, system):
 
     # pypulseq arbitrary gradient object
     if getattr(g, 'type', '') == 'grad' and hasattr(g, 'waveform'):
-        ch = getattr(g, 'channel', 'z')
-        return np.ascontiguousarray(g.waveform, dtype=np.float64), float(getattr(g, 'delay', 0.0)), ch
+        return np.ascontiguousarray(g.waveform, dtype=np.float64), float(getattr(g, 'delay', 0.0)), getattr(g, 'channel', 'z')
 
     # pypulseq trapezoid gradient object
     if getattr(g, 'type', '') == 'trap':
@@ -54,7 +53,7 @@ def _rf_to_waveform(rf, system):
     if getattr(rf, 'type', '') == 'rf' and hasattr(rf, 'signal'):
         sig = np.ascontiguousarray(rf.signal, dtype=np.complex128)
         delay = float(getattr(rf, 'delay', 0.0))
-        system.rf_raster_time = round(rf.shape_dur / len(rf.signal), 9)
+        system.rf_raster_time = round(rf.shape_dur / len(rf.signal), 9) # Calculate RF raster time from shape_dur
         return sig, delay
 
     raise ValueError("Unsupported RF input. Provide ndarray or pypulseq RF.")
@@ -92,7 +91,7 @@ def _align_and_pad(wf_a, delay_a, wf_b, delay_b, dt, debugLevel=0):
 
 
 def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
-                          debugLevel=0, return_all=True, interp_to_grad_raster=True):
+                          debugLevel=0, return_all=True, interp_to_grad_raster=False):
     """
     Return padded (br, bi, g, dt, common_start, channel, rf_pad_front, rf_pad_back) 
     from pypulseq RF/gradient (or ndarray) inputs.
@@ -106,12 +105,12 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
     if dt_g is not None:
         system.grad_raster_time = dt_g # Allows user to pass custom gradient raster time
 
-    rf_wave, rf_delay = _rf_to_waveform(rf, system)
+    rf_wave, rf_delay   = _rf_to_waveform(rf, system)
     g_wave, g_delay, ch = _grad_to_waveform(grad, system)
 
     # Set shorthands for raster times
     dt_rf = system.rf_raster_time
-    dt_g = system.grad_raster_time
+    dt_g  = system.grad_raster_time
 
     # Resample RF to grad raster or grad to rf raster if needed
     if abs(dt_g-dt_rf) > 1e-9:
@@ -124,7 +123,6 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
             t_rf = (np.arange(len(rf_wave)) + 0.5) * dt_rf
             t_g  = (np.arange(int(np.ceil((len(rf_wave)*dt_rf)/dt_g))) + 0.5) * dt_g
             rf_wave = np.interp(t_g, t_rf, rf_wave.real) + 1j*np.interp(t_g, t_rf, rf_wave.imag)
-            rf_delay = 0.0  # now aligned to grad grid
             dt = dt_g
 
         else:  # Resample (upsample) gradient to RF raster time
@@ -133,7 +131,6 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
             t_g  = (np.arange(len(g_wave)) + 0.5) * dt_g
             t_rf = (np.arange(int(np.ceil((len(g_wave)*dt_g)/dt_rf))) + 0.5) * dt_rf
             g_wave = np.interp(t_rf, t_g, g_wave)
-            g_delay = 0.0  # now aligned to rf grid
             dt = dt_rf
 
     else:
@@ -229,8 +226,8 @@ def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, ema
     Returns (arbitrary_rf, arbitrary_grad) pypulseq objects.
 
     type: "minsar" or "mintime"
-    bmax: max RF amplitude for mintime (Hz). If None, uses system.max_rf or max RF amplitude in input RF. (mintime only)
-    emax: max RF slew rate for mintime (Hz/s). If -1, uses system.max_rf_slew. (mintime only)
+    bmax: Max RF amplitude (units of b). If None, uses system.max_rf or max RF amplitude in input RF. (mintime only)
+    emax: Max RF energy (units of b*b*dt). Use -1 to not constrain (default). (mintime only)
     """
 
     if system is None:
@@ -263,6 +260,7 @@ def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, ema
     br, bi, g, dt, common_start, ch, rf_pad_front, rf_pad_back, g_pad_front, g_pad_back =_get_padded_waveforms(
         rf, grad, system, debugLevel=debugLevel, return_all=True, interp_to_grad_raster=interp_to_grad_raster)
 
+    # Call C VERSE functions
     if type.lower() == "minsar":
         brv, biv, gv = pyverse_c.minsarverse(br, bi, g, dt, max_grad, max_slew)
     elif type.lower() == "mintime":
