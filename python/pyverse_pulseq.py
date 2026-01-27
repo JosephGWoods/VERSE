@@ -155,7 +155,7 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
 
 def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
                      rf_pad_front, rf_pad_back, g_pad_front, g_pad_back,
-                     system=None, debugLevel=0, dt_rf=None, dt_g=None, interp_to_grad_raster=True):
+                     system=None, debugLevel=0, dt_rf=None, dt_g=None, interp_to_grad_raster=False):
 
     if system is None:
         system = pp.Opts.default
@@ -220,7 +220,7 @@ def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
     return rf_waveform, rf_delay, g_waveform, g_delay
 
 
-def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, emax=-1.0, system=None, debugLevel=0, interp_to_grad_raster=True):
+def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, emax=-1.0, system=None, debugLevel=0, interp_to_grad_raster=False):
     """
     Run VERSE on pypulseq RF/gradient (or ndarray) inputs.
     Returns (arbitrary_rf, arbitrary_grad) pypulseq objects.
