@@ -22,7 +22,7 @@
 %   3. type "mex('mintverse_mex.c','-R2017b');"
 %
 % Adapted from Brian Hargreaves' mintverse code
-% by Joseph G. Woods, University of Oxford, June 2022
+% by Joseph G. Woods, June 2022
 
 function [bv, gv] = mintverse(b1, g, dt, bmax, gmax, smax, emax)
 

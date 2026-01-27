@@ -1,6 +1,6 @@
 % Convert an RF/gradient pair to the minimum-time VERSE equivalent pair.
 %
-% [b1v, gv] = mintverse_matlab(b1, g, dt, bmax, gmax, smax, emax)
+% [b1v, gv] = mintverse(b1, g, dt, bmax, gmax, smax, emax)
 %
 % 1) Compresses B1/gradient so one is always maximized.
 % 2) Removes gradient slew rate violations.
@@ -31,7 +31,7 @@
 %      dt after VERSEing.
 % 
 % Adapted from Brian Hargreaves' mintverse.c algorithm 
-% by Joseph G. Woods, University of Oxford, June 2022
+% by Joseph G. Woods, June 2022
 %
 % JGW changes:
 %   1. Added support for negative gradients.
@@ -42,7 +42,7 @@
 % Paper: Hargreaves et al. MRM 2004, https://doi.org/10.1002/mrm.20168
 % Original code: http://mrsrl.stanford.edu/~brian/mintverse/ 
 
-function [b1v, gv] = mintverse_matlab(b1, g, dt, bmax, gmax, smax, emax)
+function [b1v, gv] = mintverse(b1, g, dt, bmax, gmax, smax, emax)
 
 DEBUG = false;
 % DEBUG = true;

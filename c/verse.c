@@ -20,7 +20,7 @@
         2. Add option to low-pass filter the gradient waveform and then adjust
            the RF correspondingly to avoid hardware issues (Hargreaves used 50 kHz).
 
-    Written by Joseph G. Woods, University of Oxford, May 2022
+    Written by Joseph G. Woods, May 2022
 
     Adapted from Brian Hargreaves' mintverse algorithm, described in
     Hargreaves et al. MRM 2004 (https://doi.org/10.1002/mrm.20168). The code

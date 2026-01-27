@@ -1,6 +1,6 @@
 %% VERSE RF to minimum SAR version then adjust to meet gradient constraints.
 %
-% [b1v, Gv] = minsarverse_matlab_simpler(b1, g, dt, gmax, smax, dmax)
+% [b1v, Gv] = minsarverse(b1, g, dt, gmax, smax, dmax)
 %
 % in:
 %      b1   - complex B1+ waveform (units, array)
@@ -31,7 +31,7 @@
 %   1. Add option to low-pass filter the gradient waveform and then adjust
 %      the RF correspondingly to avoid hardware issues (Hargreaves used 50 kHz).
 %
-% Written by Joseph G. Woods, University of Oxford, May 2022
+% Written by Joseph G. Woods, May 2022
 %
 % Following a similar procedure to algorithm described in Conolly et al.
 % JMR 1988 (https://doi.org/10.1016/0022-2364(88)90131-X).

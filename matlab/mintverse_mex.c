@@ -1,5 +1,5 @@
 /* Adapted from Brian Hargreaves' mintverse code       */
-/* by Joseph G. Woods, University of Oxford, June 2022 */
+/* by Joseph G. Woods, June 2022 */
 
 #define MEX_COMPILE
 

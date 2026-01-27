@@ -19,7 +19,7 @@
 %   3. type "mex('minsarverse_mex.c','-R2017b');"
 %
 % Adapted from Brian Hargreaves' mintverse code
-% by Joseph G. Woods, University of Oxford, May 2022
+% by Joseph G. Woods, May 2022
 
 function [b1v, gv] = minsarverse(b1, g, dt, gmax, smax)
 
