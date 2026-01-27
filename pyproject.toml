@@ -5,18 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pyverse"
 version = "0.1.0"
-description = "VERSE (Variable-rate Selective Excitation) implementation for python"
+description = "VERSE (Variable-rate Selective Excitation) implementation for python and pypulseq"
 authors = [
-    {name = "Joseph G. Woods", email = "joseph dot woods at unibe dot ch"}
+    {name = "Joseph G. Woods"}
 ]
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = [
-    "numpy",
-    "scipy",
-    "matplotlib",
-    "pypulseq",
-]
+dependencies = ["numpy","scipy","matplotlib","pypulseq"]
+
+[project.urls]
+Source = "https://https://github.com/JosephGWoods/VERSE"
+Issues = "https://https://github.com/JosephGWoods/VERSE/issues"
 
 [tool.setuptools]
 py-modules = ["pyverse_pulseq", "pyverse_c"]
