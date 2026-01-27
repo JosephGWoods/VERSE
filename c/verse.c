@@ -541,6 +541,7 @@ void calculateoffcenterphase(double *g, double offset, long nrf, long rfup, long
            - example units: g (T/m) , offset (m) , rfup (µs), gamma (Hz/T)
              or:            g (G/cm), offset (cm), rfup (µs), gamma (Hz/G)
              or:            g (mT/m), offset (mm), rfup (µs), gamma (MHz/T)
+             or:            g (Hz/m), offset (m) , rfup (µs), gamma = 1 (unitless)
            - the output phase is not phase-wrapped
     ------------------------------------------------------------ */
 {

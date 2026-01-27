@@ -1,18 +1,18 @@
 %%	An example of minimum-time VERSE applied to excitation.
 
-FA     = 90;             % °
-RFdur  = 2.56;           % ms
-maxB1  = 23  *1e-6;      % T
-maxG   = 80  *1e-3*1e-2; % T/cm
-maxSR  = 200 *1e-2;      % T/cm/s
-dt     = 10;             % µs
+FA     = 90;       % °
+RFdur  = 2.56;     % ms
+maxB1  = 23 *1e-6; % T
+maxG   = 80 *1e-3; % T/m
+maxSR  = 200;      % T/m/s
+dt     = 10;       % µs
 TBWP   = 10;
-offset = 0;              % mm
-slthk  = 5;              % mm
-units  = 'T';            % 'Hz', 'T', 'G' ()
+offset = 0;        % mm
+slthk  = 5;        % mm
+units  = 'T';      % 'Hz', 'T', 'G'
 
 % Generate Sinc pulse and gradient
-[B1, Gmax] = gensinc(FA, 0, RFdur, TBWP/2, TBWP/2, 'Hann', dt, units, slthk, offset); % [T, T/cm]
+[B1, Gmax] = gensinc(FA, 0, RFdur, TBWP/2, TBWP/2, 'Hann', dt, units, slthk, offset); % [T, T/m]
 
 % Create gradient option 1
 rampPoints = ceil(1e6*Gmax/maxSR/dt);
@@ -26,14 +26,16 @@ B1 = [zeros(rampPoints,1); B1; zeros(rampPoints,1)];
 % B1 = [0;B1;0];
 % G  = [0;G ;0];
 
-% [B1v,Gv] = mintverse_matlab(B1,G,dt*1e-6,maxB1,maxG,maxSR);
-[B1v,Gv] = mintverse(B1,G,dt*1e-6,maxB1,maxG,maxSR);
+tic
+% [B1v,Gv] = mintverse(B1,G,dt*1e-6,maxB1,maxG,maxSR); % Native MATLAB
+[B1v,Gv] = mintverse_c(B1,G,dt*1e-6,maxB1,maxG,maxSR); % MEXed C-code
+toc
 
 % Now, repeat but constrain the energy to 50% of the original pulse.
 eb1 = sum(abs(B1).^2)*dt*1e-6;
 tic
-% [B1ve,Gve] = mintverse_matlab(B1,G,dt*1e-6,maxB1,maxG,maxSR,eb1);
-[B1ve,Gve] = mintverse(B1,G,dt*1e-6,maxB1,maxG,maxSR,0.5*eb1); % 50% of energy in original pulse.
+% [B1ve,Gve] = mintverse(B1,G,dt*1e-6,maxB1,maxG,maxSR,0.5*eb1); % Native MATLAB
+[B1ve,Gve] = mintverse_c(B1,G,dt*1e-6,maxB1,maxG,maxSR,0.5*eb1); % MEXed C-code
 toc
 
 % Time vectors, for plotting.
@@ -94,7 +96,7 @@ ylim([-B1lim,B1lim]);
 grid on; box on;
 
 subplot(2,3,4); hold on
-plot(t,1e3*1e2*G,'LineWidth',2);
+plot(t,1e3*G,'LineWidth',2);
 set(gca,'FontSize',16);
 title('Initial Gradient','FontSize',20);
 xlabel('Time (s)','FontSize',20);
@@ -104,7 +106,7 @@ ylim([-Glim,Glim]);
 grid on; box on;
 
 subplot(2,3,5); hold on
-plot(tv,1e3*1e2*Gv,'LineWidth',2);
+plot(tv,1e3*Gv,'LineWidth',2);
 set(gca,'FontSize',16);
 title('VERSE Gradient','FontSize',20);
 xlabel('Time (s)','FontSize',20);
@@ -114,7 +116,7 @@ ylim([-Glim,Glim]);
 grid on; box on;
 
 subplot(2,3,6); hold on
-plot(tve,1e3*1e2*Gve,'LineWidth',2);
+plot(tve,1e3*Gve,'LineWidth',2);
 set(gca,'FontSize',16);
 title('Energy-Constrained VERSE Gradient','FontSize',20);
 xlabel('Time (s)','FontSize',20);

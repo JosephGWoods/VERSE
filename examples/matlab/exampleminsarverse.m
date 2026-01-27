@@ -1,16 +1,16 @@
 %%	An example of minimum-SAR VERSE applied to excitation.
 
-FA     = 90;             % °
-RFdur  = 2.56;           % ms
-maxG   = 80  *1e-3*1e-2; % T/cm
-maxSR  = 200 *1e-2;      % T/cm/s
-dt     = 2;             % µs
+FA     = 90;       % °
+RFdur  = 2.56;     % ms
+maxG   = 80 *1e-3; % T/m
+maxSR  = 200;      % T/m/s
+dt     = 2;        % µs
 TBWP   = 10;
-offset = 0;              % mm
-slthk  = 1.4;              % mm
-units  = 'T';            % 'Hz', 'T', 'G' ()
+offset = 0;        % mm
+slthk  = 5;        % mm
+units  = 'T';      % 'Hz', 'T', 'G'
 
-[B1, Gmax] = gensinc(FA, 0, RFdur, TBWP/2, TBWP/2, 'Hann', dt, units, slthk, offset); % [T, T/cm]
+[B1, Gmax] = gensinc(FA, 0, RFdur, TBWP/2, TBWP/2, 'Hann', dt, units, slthk, offset); % [T, T/m]
 
 % Create gradient option 1
 rampPoints = ceil(1e6*Gmax/maxSR/dt);
@@ -25,16 +25,15 @@ B1 = [zeros(rampPoints,1); B1; zeros(rampPoints,1)];
 % G  = [0;G ;0];
 
 tic
-% [B1v, Gv] = minsarverse_matlab_simpler(B1, G, dt*1e-6, maxG, maxSR); % Native MATLAB
-% [B1v, Gv] = minsarverse_matlab(B1, G, dt*1e-6, maxG, maxSR); % Native MATLAB
-[B1v, Gv] = minsarverse(B1, G, dt*1e-6, maxG, maxSR); % MEXed C-code
+% [B1v, Gv] = minsarverse(B1, G, dt*1e-6, maxG, maxSR); % Native MATLAB
+[B1v, Gv] = minsarverse_c(B1, G, dt*1e-6, maxG, maxSR); % MEXed C-code
 toc
 
 % Change units for plotting
-B1p  = B1  * 1e6;     % Convert to µT
-B1vp = B1v * 1e6;     % Convert to µT
-Gp   = G   * 1e2*1e3; % Convert to mT/m
-Gvp  = Gv  * 1e2*1e3; % Convert to mT/m
+B1p  = B1  * 1e6; % Convert to µT
+B1vp = B1v * 1e6; % Convert to µT
+Gp   = G   * 1e3; % Convert to mT/m
+Gvp  = Gv  * 1e3; % Convert to mT/m
 
 % Time vectors, for plotting.
 t  = (0.5:length(B1p ))' *dt*1e-6;
