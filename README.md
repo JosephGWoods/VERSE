@@ -99,13 +99,18 @@ C-accelerated (after building MEX):
 [b1v, gv] = minsarverse_c(b1, g, dt, gmax, smax);
 ```
 
-## Development notes
-- Build scripts:
-  - Python: `bash build_python_lib.sh`
-  - MATLAB: `build_matlab_mex` (inside MATLAB)
-
 ## License
 See `LICENSE`
+
+## References
+
+If you use the minimum-time VERSE algorithm in your work, please cite the following paper alongside this repository:
+
+Hargreaves BA, Cunningham CH, Nishimura DG, Conolly SM. Variable-rate selective excitation for rapid MRI sequences. Magnetic Resonance in Medicine. 2004;52(3):3. doi:10.1002/mrm.20168
+
+If you use the minimum-SAR VERSE algorithm in your work, please cite the following paper alongside this repository:
+
+Woods JG, Ji Y, Li H, Hess AT, Okell TW. SNR-efficient whole-brain pseudo-continuous arterial spin labeling perfusion imaging at 7 T. Magnetic Resonance in Medicine. 2025;94(3):965-981. doi:10.1002/mrm.30527
 
 ## Links
 - Source: https://github.com/JosephGWoods/VERSE
