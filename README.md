@@ -8,10 +8,10 @@ Variable-rate Selective Excitation (VERSE) algorithms and helpers in C, MATLAB, 
 - Core C implementation for performance
 - MATLAB:
   - Pure MATLAB implementations: `mintverse.m`, `minsarverse.m`
-  - C-accelerated MEX wrappers: `mintverse_c.m`, `minsarverse_c.m`
+  - MEX wrappers around the C library: `mintverse_c.m`, `minsarverse_c.m`
 - Python:
   - ctypes wrapper around the C library: `pyverse_c.py`
-  - pypulseq helpers: `pyverse_pulseq.py` (including off-center phase utilities)
+  - pypulseq helpers: `pyverse_pulseq.py`
 
 ## Repository layout
 - `c/` — C core (`verse.c`, `verse.h`)
@@ -29,9 +29,9 @@ Variable-rate Selective Excitation (VERSE) algorithms and helpers in C, MATLAB, 
 ## Installation
 
 ### Python
-Install the package (editable install recommended during development):
+Install the package:
 ```bash
-pip install -e .
+pip install .
 ```
 
 Optionally build the C shared library used by the ctypes wrapper:
@@ -73,7 +73,11 @@ from pyverse_pulseq import verse, calculateoffcenterphase
 
 system = pp.Opts()
 rf, gz, gzr = pp.make_sinc_pulse(
-    flip_angle=np.deg2rad(90), duration=4e-3, slice_thickness=5e-3, return_gz=True, system=system
+    flip_angle      = np.deg2rad(90),
+    duration        = 4e-3,
+    slice_thickness = 5e-3,
+    return_gz       = True,
+    system          = system
 )
 
 # Minimum-time VERSE
