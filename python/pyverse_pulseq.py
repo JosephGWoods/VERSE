@@ -59,7 +59,7 @@ def _rf_to_waveform(rf, system):
     raise ValueError("Unsupported RF input. Provide ndarray or pypulseq RF.")
 
 
-def _align_and_pad(wf_a, delay_a, wf_b, delay_b, dt, debugLevel=0):
+def _align_and_pad(wf_a, delay_a, wf_b, delay_b, dt, debug_level=0):
     """
     Pad two waveforms (complex or real) to a common start/length.
     Returns (a, b, common_start, pad_a_front, pad_a_back, pad_b_front, pad_b_back)
@@ -69,7 +69,7 @@ def _align_and_pad(wf_a, delay_a, wf_b, delay_b, dt, debugLevel=0):
     start_a = int(round(delay_a / dt))
     start_b = int(round(delay_b / dt))
     common_start = min(start_a, start_b)
-    if debugLevel > 1:
+    if debug_level > 1:
         print(f"Aligning waveforms: start_a={start_a}, start_b={start_b}, common_start={common_start}")
 
     # Pad starts of the waveforms
@@ -91,7 +91,7 @@ def _align_and_pad(wf_a, delay_a, wf_b, delay_b, dt, debugLevel=0):
 
 
 def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
-                          debugLevel=0, return_all=True, interp_to_grad_raster=False):
+                          debug_level=0, return_all=True, interp_to_grad_raster=False):
     """
     Return padded (br, bi, g, dt, common_start, channel, rf_pad_front, rf_pad_back) 
     from pypulseq RF/gradient (or ndarray) inputs.
@@ -114,11 +114,11 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
 
     # Resample RF to grad raster or grad to rf raster if needed
     if abs(dt_g-dt_rf) > 1e-9:
-        if debugLevel > 1:
+        if debug_level > 1:
             print(f"Raster times differ: dt_rf={dt_rf}, dt_g={dt_g}")
 
         if interp_to_grad_raster: # Resample (downsample) RF to gradient raster time
-            if debugLevel > 1:
+            if debug_level > 1:
                 print(f"Resampling RF from dt={dt_rf} to dt={dt_g}")
             t_rf = (np.arange(len(rf_wave)) + 0.5) * dt_rf
             t_g  = (np.arange(int(np.ceil((len(rf_wave)*dt_rf)/dt_g))) + 0.5) * dt_g
@@ -126,7 +126,7 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
             dt = dt_g
 
         else:  # Resample (upsample) gradient to RF raster time
-            if debugLevel > 1:
+            if debug_level > 1:
                 print(f"Resampling gradient from dt={dt_g} to dt={dt_rf}")
             t_g  = (np.arange(len(g_wave)) + 0.5) * dt_g
             t_rf = (np.arange(int(np.ceil((len(g_wave)*dt_g)/dt_rf))) + 0.5) * dt_rf
@@ -134,13 +134,13 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
             dt = dt_rf
 
     else:
-        if debugLevel > 1:
+        if debug_level > 1:
             print(f"No resampling needed; RF and gradient have the same raster time: dt_rf={dt_rf}, dt_g={dt_g}.")
         dt = dt_g # dt_g and dt_rf are the same
 
     # Align and pad
     rf_wave, g_wave, common_start, rf_pad_front, rf_pad_back, g_pad_front, g_pad_back = \
-        _align_and_pad(rf_wave, rf_delay, g_wave, g_delay, dt, debugLevel=debugLevel)
+        _align_and_pad(rf_wave, rf_delay, g_wave, g_delay, dt, debug_level=debug_level)
 
     br = np.ascontiguousarray(rf_wave.real, dtype=np.float64)
     bi = np.ascontiguousarray(rf_wave.imag, dtype=np.float64)
@@ -155,7 +155,7 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
 
 def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
                      rf_pad_front, rf_pad_back, g_pad_front, g_pad_back,
-                     system=None, debugLevel=0, dt_rf=None, dt_g=None, interp_to_grad_raster=False):
+                     system=None, debug_level=0, dt_rf=None, dt_g=None, interp_to_grad_raster=False):
 
     if system is None:
         system = pp.Opts.default
@@ -186,7 +186,7 @@ def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
 
     if interp_to_grad_raster and abs(dt-system.rf_raster_time) > 1e-9:
         # If we interpolated the rf waveform to the gradient raster, resample it back to the rf raster time
-        if debugLevel > 1:
+        if debug_level > 1:
             print(f"Resampling RF back from dt={dt} to dt={system.rf_raster_time}")
         dt_rf = system.rf_raster_time # original RF raster time
         t_rf = (np.arange(len(rf_waveform)) + 0.5) * dt # time vector at gradient raster
@@ -195,7 +195,7 @@ def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
 
     elif not interp_to_grad_raster and abs(dt-system.grad_raster_time) > 1e-9:
         # If we interpolated the gradient waveform to the RF raster, resample it back to the gradient raster time
-        if debugLevel > 1:
+        if debug_level > 1:
             print(f"Resampling gradient back from dt={dt} to dt={system.grad_raster_time}")
         dt_g = system.grad_raster_time # original gradient raster time
         t_g = (np.arange(len(g_waveform)) + 0.5) * dt # time vector at RF raster
@@ -209,7 +209,7 @@ def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
         if dur_rf_on_g_raster > dur_rf:
             n_needed = int(round(dur_rf_on_g_raster / system.rf_raster_time))
             # Pad RF waveform front and back to maintain alignment
-            if debugLevel > 1:
+            if debug_level > 1:
                 print(f"Padding RF waveform from {len(rf_waveform)} to {n_needed} samples to match gradient raster.")
             n_pad = n_needed - len(rf_waveform)
             pad_front = n_pad // 2
@@ -220,7 +220,7 @@ def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
     return rf_waveform, rf_delay, g_waveform, g_delay
 
 
-def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, emax=-1.0, system=None, debugLevel=0, interp_to_grad_raster=False):
+def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, emax=-1.0, system=None, debug_level=0, interp_to_grad_raster=False):
     """
     Run VERSE on pypulseq RF/gradient (or ndarray) inputs.
     Returns (arbitrary_rf, arbitrary_grad) pypulseq objects.
@@ -258,7 +258,7 @@ def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, ema
 
     # Extract and pad waveforms to match lengths
     br, bi, g, dt, common_start, ch, rf_pad_front, rf_pad_back, g_pad_front, g_pad_back =_get_padded_waveforms(
-        rf, grad, system, debugLevel=debugLevel, return_all=True, interp_to_grad_raster=interp_to_grad_raster)
+        rf, grad, system, debug_level=debug_level, return_all=True, interp_to_grad_raster=interp_to_grad_raster)
 
     # Call C VERSE functions
     if type.lower() == "minsar":
@@ -272,7 +272,7 @@ def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, ema
     rfv_waveform, rfv_delay, gv_waveform, gv_delay = _unpad_waveforms(
         (brv + 1j*biv), gv, dt, common_start,
         rf_pad_front, rf_pad_back, g_pad_front, g_pad_back,
-        system=system, debugLevel=debugLevel, interp_to_grad_raster=interp_to_grad_raster)
+        system=system, debug_level=debug_level, interp_to_grad_raster=interp_to_grad_raster)
 
     # Build pypulseq arbitrary RF/grad
     rf_out = make_arbitrary_rf(
@@ -295,7 +295,7 @@ def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, ema
     return rf_out, grad_out
 
 
-def calculateoffcenterphase(grad, offset, rf=None, nrf=None, gamma=42.576e6, system=None, debugLevel=0):
+def calculateoffcenterphase(grad, offset, rf=None, nrf=None, gamma=42.576e6, system=None, debug_level=0):
     """
     Calculate off-center slice RF phase waveform for a pypulseq gradient.
 
@@ -317,7 +317,7 @@ def calculateoffcenterphase(grad, offset, rf=None, nrf=None, gamma=42.576e6, sys
         Gyromagnetic ratio in Hz/T (default: 42.576e6 for 1H)
     system : pypulseq.Opts, optional
         System limits object containing raster times
-    debugLevel : int, optional
+    debug_level : int, optional
         Debug verbosity level (default: 0)
 
     Returns
@@ -362,7 +362,7 @@ def calculateoffcenterphase(grad, offset, rf=None, nrf=None, gamma=42.576e6, sys
             nrf = len(g_wave)
             warnings.warn("RF object not provided; using number of gradient points for nrf.", RuntimeWarning)
 
-    if debugLevel > 1:
+    if debug_level > 1:
         print(f"Gradient waveform: {len(g_wave)} points, delay={g_delay}s")
         print(f"RF points: {nrf}")
         print(f"Offset: {offset*1e3:.2f} mm")
@@ -371,7 +371,7 @@ def calculateoffcenterphase(grad, offset, rf=None, nrf=None, gamma=42.576e6, sys
     rfup = int(round(system.rf_raster_time * 1e6))  # µs
     gup  = int(round(system.grad_raster_time * 1e6))  # µs
 
-    if debugLevel > 1:
+    if debug_level > 1:
         print(f"RF raster: {rfup} µs")
         print(f"Gradient raster: {gup} µs")
         print(f"Gamma: {gamma/1e6:.4f} MHz/T")
