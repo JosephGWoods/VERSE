@@ -276,15 +276,15 @@ def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, ema
 
     # Build pypulseq arbitrary RF/grad
     rf_out = make_arbitrary_rf(
-        signal=rfv_waveform,
-        flip_angle=None,
-        dwell=system.rf_raster_time,
-        delay=rfv_delay,
-        no_signal_scaling=True,
-        freq_offset=rf.freq_offset if hasattr(rf, 'freq_offset') else 0,
-        phase_offset=rf.phase_offset if hasattr(rf, 'phase_offset') else 0,
-        use=rf.use if hasattr(rf, 'use') else '',
-        system=system,
+        signal            = rfv_waveform,
+        flip_angle        = 0, # Not used due to no_signal_scaling=True, but pypulseq requires a value
+        dwell             = system.rf_raster_time,
+        delay             = rfv_delay,
+        no_signal_scaling = True,
+        freq_offset       = rf.freq_offset if hasattr(rf, 'freq_offset') else 0,
+        phase_offset      = rf.phase_offset if hasattr(rf, 'phase_offset') else 0,
+        use               = rf.use if hasattr(rf, 'use') else '',
+        system            = system,
     )
     grad_out = make_arbitrary_grad(
         channel=ch,
