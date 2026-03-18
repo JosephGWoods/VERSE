@@ -1,12 +1,28 @@
-# verse_pypulseq.py - pypulseq helpers for VERSE
-import numpy as np
-import pypulseq as pp
-import warnings
+# pyverse_pulseq.py - pypulseq helpers for VERSE
+"""
+Provides functions to run VERSE on pypulseq RF and gradient objects, including
+handling of waveform extraction, alignment, padding, and conversion back to
+pypulseq arbitrary RF/grad objects.
 
+Also includes a function to calculate off-center phase variation for a given
+gradient and slice offset, which can be useful for including in the RF signal
+itself, rather than relying on vendor-specific arbitrary gradient slice-offset
+calculations.
+
+Author: Joseph G. Woods
+Date: December 2025
+"""
+from types import SimpleNamespace
+from typing import Tuple, Union
+from copy import copy
+
+import numpy as np
+
+from pypulseq.opts import Opts
 from pypulseq.points_to_waveform import points_to_waveform
 from pypulseq.make_arbitrary_grad import make_arbitrary_grad
 from pypulseq.make_arbitrary_rf import make_arbitrary_rf
-from copy import copy
+
 
 import pyverse_c  # assumes libverse.dylib/verse.dll/libverse.so is alongside pyverse_c.py
 
@@ -36,8 +52,8 @@ def _grad_to_waveform(g, system):
                               delay + rt,
                               delay + rt + rft])
             amps = np.array([0, g.amplitude, 0], dtype=np.float64)
-        wf = points_to_waveform(amps, system.grad_raster_time, times)
-        return np.ascontiguousarray(wf, dtype=np.float64), delay, getattr(g, 'channel', 'z')
+        waveform = points_to_waveform(amps, system.grad_raster_time, times)
+        return np.ascontiguousarray(waveform, dtype=np.float64), delay, getattr(g, 'channel', 'z')
 
     raise ValueError("Unsupported gradient input. Provide ndarray, trap, or grad.")
 
@@ -51,10 +67,10 @@ def _rf_to_waveform(rf, system):
 
     # pypulseq RF object
     if getattr(rf, 'type', '') == 'rf' and hasattr(rf, 'signal'):
-        sig = np.ascontiguousarray(rf.signal, dtype=np.complex128)
+        waveform = np.ascontiguousarray(rf.signal, dtype=np.complex128)
         delay = float(getattr(rf, 'delay', 0.0))
-        system.rf_raster_time = round(rf.shape_dur / len(rf.signal), 9) # Calculate RF raster time from shape_dur
-        return sig, delay
+        system.rf_raster_time = round(rf.shape_dur / len(rf.signal), 9) # Calculate RF raster time from shape_dur and modify system accordingly
+        return waveform, delay
 
     raise ValueError("Unsupported RF input. Provide ndarray or pypulseq RF.")
 
@@ -99,7 +115,9 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
     """
 
     if system is None:
-        system = pp.Opts.default
+        system = Opts.default
+    else:
+        system = copy(system) # avoid modifying user system internally
     if dt_rf is not None:
         system.rf_raster_time = dt_rf # Allows user to pass custom RF raster time
     if dt_g is not None:
@@ -130,7 +148,7 @@ def _get_padded_waveforms(rf, grad, system=None, dt_g=None, dt_rf=None,
                 print(f"Resampling gradient from dt={dt_g} to dt={dt_rf}")
             t_g  = (np.arange(len(g_wave)) + 0.5) * dt_g
             t_rf = (np.arange(int(np.ceil((len(g_wave)*dt_g)/dt_rf))) + 0.5) * dt_rf
-            g_wave = np.interp(t_rf, t_g, g_wave)
+            g_wave = np.interp(x=t_rf, xp=t_g, fp=g_wave)
             dt = dt_rf
 
     else:
@@ -158,7 +176,9 @@ def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
                      system=None, debug_level=0, dt_rf=None, dt_g=None, interp_to_grad_raster=False):
 
     if system is None:
-        system = pp.Opts.default
+        system = Opts.default
+    else:
+        system = copy(system) # avoid modifying user system internally
     if dt_rf is not None:
         system.rf_raster_time = dt_rf # Allows user to pass custom RF raster time
     if dt_g is not None:
@@ -220,18 +240,66 @@ def _unpad_waveforms(rf_waveform, g_waveform, dt, common_start,
     return rf_waveform, rf_delay, g_waveform, g_delay
 
 
-def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, emax=-1.0, system=None, debug_level=0, interp_to_grad_raster=False):
+def verse(
+    rf: Union[SimpleNamespace, np.ndarray],
+    grad: Union[SimpleNamespace, np.ndarray],
+    type: str = "mintime",
+    max_grad: Union[float, None] = None,
+    max_slew: Union[float, None] = None,
+    bmax: Union[float, None] = None,
+    emax: float = -1.0,
+    system: Union[Opts, None] = None,
+    debug_level: int = 0,
+    interp_to_grad_raster: bool = False
+    ) -> Tuple[SimpleNamespace, SimpleNamespace]:
     """
     Run VERSE on pypulseq RF/gradient (or ndarray) inputs.
-    Returns (arbitrary_rf, arbitrary_grad) pypulseq objects.
+    Returns arbitrary_rf and arbitrary_grad pypulseq objects.
 
-    type: "minsar" or "mintime"
-    bmax: Max RF amplitude (units of b). If None, uses system.max_rf or max RF amplitude in input RF. (mintime only)
-    emax: Max RF energy (units of b*b*dt). Use -1 to not constrain (default). (mintime only)
+    Parameters
+    ----------
+    rf :        SimpleNamespace or numpy ndarray
+                Pypulseq RF object or RF waveform.
+    grad :      SimpleNamespace or numpy ndarray
+                Pypulseq gradient object (trap or grad) or gradient waveform (Hz/m)
+    type :      str, optional
+                VERSE type to run. Options are: "minsar" or "mintime".
+                default: "mintime"
+    max_grad :  float, optional
+                Maximum gradient strength of accompanying slice select trapezoidal event.
+                default: None, which uses system.max_grad.
+    max_slew :  float, optional
+                Maximum gradient slew rate of accompanying slice select trapezoidal event.
+                default: None, which uses system.max_slew.
+    bmax :      float, optional
+                Max RF amplitude (units of RF, e.g. Hz).
+                Only used for mintime VERSE. Ignored for minsar VERSE.
+                default: None, which uses system.max_rf or max RF amplitude in input RF.
+    emax :      float, optional
+                Max RF energy (units of RF^2 * dt).
+                Only used for mintime VERSE. Ignored for minsar VERSE.
+                default: -1, which does not constrain energy.
+    system :    Opts, optional
+                System limits object containing raster times and max RF/grad
+                default: None, which uses Opts.default.
+    debug_level : int, optional
+                Debug verbosity level (default: 0). Higher values print more debug info.
+    interp_to_grad_raster : bool, optional
+                True: interpolates the RF waveform to the gradient raster time before running
+                VERSE, and then back to the original RF raster time after.
+                If False, interpolates the gradient to the RF raster time and then back instead.
+                default: False (interpolate gradient to RF raster).
+
+    Returns
+    -------
+    rf_out : SimpleNamespace
+        Pypulseq arbitrary RF object containing the VERSEd RF waveform and parameters.
+    grad_out : SimpleNamespace
+        Pypulseq arbitrary gradient object containing the VERSEd gradient waveform and parameters.
     """
 
     if system is None:
-        system = pp.Opts.default
+        system = Opts.default
     else:
         system = copy(system) # avoid modifying user system internally
     if max_grad is None:
@@ -258,7 +326,7 @@ def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, ema
 
     # Extract and pad waveforms to match lengths
     br, bi, g, dt, common_start, ch, rf_pad_front, rf_pad_back, g_pad_front, g_pad_back =_get_padded_waveforms(
-        rf, grad, system, debug_level=debug_level, return_all=True, interp_to_grad_raster=interp_to_grad_raster)
+        rf, grad, system=system, debug_level=debug_level, return_all=True, interp_to_grad_raster=interp_to_grad_raster)
 
     # Call C VERSE functions
     if type.lower() == "minsar":
@@ -284,101 +352,113 @@ def verse(rf, grad, type="mintime", max_grad=None, max_slew=None, bmax=None, ema
         freq_offset       = rf.freq_offset if hasattr(rf, 'freq_offset') else 0,
         phase_offset      = rf.phase_offset if hasattr(rf, 'phase_offset') else 0,
         use               = rf.use if hasattr(rf, 'use') else '',
-        system            = system,
+        system            = system
     )
     grad_out = make_arbitrary_grad(
-        channel=ch,
-        waveform=gv_waveform,
-        delay=gv_delay,
-        system=system,
+        channel  = ch,
+        waveform = gv_waveform,
+        delay    = gv_delay,
+        system   = system
     )
+
     return rf_out, grad_out
 
 
-def calculateoffcenterphase(grad, offset, rf=None, nrf=None, gamma=42.576e6, system=None, debug_level=0):
+def apply_offcenter_phase(
+    rf: Union[SimpleNamespace, np.ndarray],
+    grad: Union[SimpleNamespace, np.ndarray],
+    offset: float,
+    gamma: float = 1,
+    system: Union[Opts, None] = None,
+    dt_g: Union[float, None] = None,
+    dt_rf: Union[float, None] = None,
+    debug_level: int = 0
+    ) -> SimpleNamespace:
     """
-    Calculate off-center slice RF phase waveform for a pypulseq gradient.
+    Calculate the off-center slice phase waveform needed for an arbitrary gradient shape,
+    add it to the RF waveform and return the modified RF as a pypulseq RF object.
 
     Useful for calculating variable phase variation due to off-center VERSE pulse.
 
     Parameters
     ----------
+    rf : Pypulseq RF object or ndarray
+        Pypulseq RF object or complex ndarray of RF waveform (arbitrary units).
     grad : gradient object or ndarray
-        Pypulseq gradient object (trap or grad) or ndarray of gradient waveform (Hz/m)
+        Pypulseq gradient object (trap or grad) or ndarray of gradient waveform
+        (arbitrary units, but expect Hz/m by default).
     offset : float
-        Slice offset in meters (m)
-    rf : RF object, optional
-        Pypulseq RF object to determine nrf automatically. If None, nrf is used.
-        If nrf is also None, number of gradient points is used.
-    nrf : int, optional
-        Number of points in RF waveform. If None, derived from rf object.
-        If rf is also None, number of gradient points is used.
+        Slice offset ((same units of distance as grad, e.g. m if gradient is in Hz/m).
     gamma : float, optional
-        Gyromagnetic ratio in Hz/T (default: 42.576e6 for 1H)
+        Gyromagnetic ratio (Hz per same unit of field strength as g. default: 1 assuming Hz/Hz)
     system : pypulseq.Opts, optional
-        System limits object containing raster times
+        System limits object containing raster times (default: None, which uses Opts.default)
+    dt_g : float, optional
+        Custom gradient raster time in seconds (overrides system.grad_raster_time)
+    dt_rf : float, optional
+        Custom RF raster time in seconds (overrides system.rf_raster_time)
     debug_level : int, optional
         Debug verbosity level (default: 0)
 
     Returns
     -------
-    phase : ndarray
-        Slice offset phase waveform in radians, length nrf
+    rf_out : RF object
+        Modified Pypulseq RF object with off-center phase applied
 
     Notes
     -----
     - Assumes gradient raster time is a multiple of RF raster time
     - Assumes pulse is symmetrical with respect to setting center phase to 0
-    - Default units: gradient (Hz/m), offset (m), gamma (2π), phase (radians)
-    - Output phase is not phase-wrapped
 
     Examples
     --------
     >>> import pypulseq as pp
-    >>> system = pp.Opts.default
+    >>> system = pp.Opts()
     >>> g = pp.make_trapezoid(channel='z', amplitude=10e-3, duration=4e-3, system=system)
     >>> rf = pp.make_sinc_pulse(flip_angle=np.pi/2, duration=4e-3, system=system)
     >>> offset = 20e-3  # 20 mm
-    >>> phase = calculateoffcenterphase(g, offset, rf=rf, system=system)
+    >>> rf_out = apply_offcenter_phase(g, offset, rf=rf, system=system)
     """
 
-    # TODO: Need to pad array to correctly calculate phase
-
     if system is None:
-        system = pp.Opts.default
+        system = Opts.default
 
-    # Convert gradient to waveform
-    g_wave, g_delay, _ = _grad_to_waveform(grad, system)
+    # Extract, pad and interpolate waveforms to match lengths
+    br, bi, g, dt, common_start, ch, rf_pad_front, rf_pad_back, g_pad_front, g_pad_back =_get_padded_waveforms(
+        rf, grad, system=system, dt_g=dt_g, dt_rf=dt_rf, debug_level=debug_level, return_all=True, interp_to_grad_raster=False)
 
-    # Determine nrf
-    if nrf is None:
-        if rf is not None:
-            if hasattr(rf, 'signal'):
-                nrf = len(rf.signal)
-            else:
-                nrf = len(g_wave)
-                warnings.warn("RF object provided has no 'signal' attribute; using number of gradient points for nrf.", RuntimeWarning)
-        else:
-            nrf = len(g_wave)
-            warnings.warn("RF object not provided; using number of gradient points for nrf.", RuntimeWarning)
+    # Determine nrf for input to C function
+    nrf = br.shape[0]
 
-    if debug_level > 1:
-        print(f"Gradient waveform: {len(g_wave)} points, delay={g_delay}s")
-        print(f"RF points: {nrf}")
-        print(f"Offset: {offset*1e3:.2f} mm")
-
-    # Convert raster times to microseconds for C function
-    rfup = int(round(system.rf_raster_time * 1e6))  # µs
-    gup  = int(round(system.grad_raster_time * 1e6))  # µs
-
-    if debug_level > 1:
-        print(f"RF raster: {rfup} µs")
-        print(f"Gradient raster: {gup} µs")
-        print(f"Gamma: {gamma/1e6:.4f} MHz/T")
+    # Convert the now common raster time to microseconds for C function
+    rfup = int(round(dt * 1e6)) # µs
+    gup  = int(round(dt * 1e6)) # µs
 
     # Call C function
-    phase = pyverse_c.calculateoffcenterphase(
-        g_wave, offset, nrf, rfup, gup, gamma
+    rf_phase = pyverse_c.calculateoffcenterphase(
+        g, offset, nrf, rfup, gup, gamma
     )
 
-    return phase
+    # Add off-center phase waveform to the original RF waveform
+    rf_waveform_out = (br + 1j*bi) * np.exp(1j*rf_phase)
+
+    # Strip padding and undo interpolation
+    rf_waveform_out, rf_delay, _, _ = _unpad_waveforms(
+        rf_waveform_out, g, dt, common_start,
+        rf_pad_front, rf_pad_back, g_pad_front, g_pad_back,
+        system=system, debug_level=debug_level, interp_to_grad_raster=False)
+
+    # Build pypulseq arbitrary RF/grad
+    rf_out = make_arbitrary_rf(
+        signal            = rf_waveform_out,
+        flip_angle        = 0, # Not used due to no_signal_scaling=True, but pypulseq requires a value
+        dwell             = system.rf_raster_time,
+        delay             = rf_delay,
+        no_signal_scaling = True,
+        freq_offset       = rf.freq_offset if hasattr(rf, 'freq_offset') else 0,
+        phase_offset      = rf.phase_offset if hasattr(rf, 'phase_offset') else 0,
+        use               = rf.use if hasattr(rf, 'use') else '',
+        system            = system
+    )
+
+    return rf_out
