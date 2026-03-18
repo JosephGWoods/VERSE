@@ -310,9 +310,9 @@ def verse(
         if getattr(system, "max_rf", None) is not None and system.max_rf > 0:
             bmax = system.max_rf
         elif hasattr(rf, 'signal'):
-            bmax = np.max(np.sqrt(rf.signal.real**2 + rf.signal.imag**2))
+            bmax = np.max(np.abs(rf.signal))
         elif isinstance(rf, np.ndarray):
-            bmax = np.max(np.sqrt(rf.real**2 + rf.imag**2))
+            bmax = np.max(np.abs(rf))
         else:
             raise ValueError("Cannot determine bmax for mintime VERSE. Please provide bmax parameter.")
 
