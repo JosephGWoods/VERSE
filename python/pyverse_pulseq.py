@@ -417,7 +417,7 @@ def apply_offcenter_phase(
     >>> g = pp.make_trapezoid(channel='z', amplitude=10e-3, duration=4e-3, system=system)
     >>> rf = pp.make_sinc_pulse(flip_angle=np.pi/2, duration=4e-3, system=system)
     >>> offset = 20e-3  # 20 mm
-    >>> rf_out = apply_offcenter_phase(g, offset, rf=rf, system=system)
+    >>> rf_out = apply_offcenter_phase(rf, g, offset, system=system)
     """
 
     if system is None:

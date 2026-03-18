@@ -86,8 +86,8 @@ rfv, gv = verse(rf=rf, grad=gz, system=system, type="mintime")
 # Minimum-SAR VERSE
 rfv, gv = verse(rf=rf, grad=gz, system=system, type="minsar")
 
-# Off-center phase (example: 20 mm)
-phase = calculateoffcenterphase(g=gv, offset=20e-3, rf=rf, system=system)
+# Off-center slice (example: 20 mm)
+rfv_offset = apply_offcenter_phase(rfv, gv, offset=20e-3, system=system)
 ```
 
 ### MATLAB
