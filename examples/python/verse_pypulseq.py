@@ -26,7 +26,7 @@ def example_verse(type="minsar"):
 
     # Create test RF and gradient waveforms
     rf, gz, gzr = pp.make_sinc_pulse(
-        flip_angle      = 90*np.pi/180,
+        flip_angle      = np.deg2rad(90),
         duration        = 2.56e-3,
         slice_thickness = 5.0e-3,
         time_bw_product = 10,
@@ -38,12 +38,14 @@ def example_verse(type="minsar"):
     if type == "minsar":
         print("\nRunning minsar VERSE...")
         rfv, gzv = ppverse.verse(rf, gz, type="minsar", system=system, interp_to_grad_raster=interp_to_grad_raster)
+        rfv_offset = ppverse.apply_offcenter_phase(rfv, gzv, offset=1e-3, system=system)
         print(f"minsar VERSE completed successfully")
 
     elif type == "mintime":
         print("\nRunning mintime VERSE...")
         bmax = np.max(np.sqrt(rf.signal.real**2 + rf.signal.imag**2)) # Max B1 amplitude of input RF
         rfv, gzv = ppverse.verse(rf, gz, type="mintime", bmax=bmax, emax=-1.0, system=system, interp_to_grad_raster=interp_to_grad_raster)
+        rfv_offset = ppverse.apply_offcenter_phase(rfv, gzv, offset=1e-3, system=system)
         print(f"mintime VERSE completed successfully")
 
     # Print summary statistics
@@ -61,11 +63,20 @@ def example_verse(type="minsar"):
     seq.add_block(gzr)
     seq.add_block(rfv, gzv)
     seq.add_block(gzr)
-    seq.plot()
+    seq.add_block(rfv_offset, gzv)
+    seq.add_block(gzr)
+    try:
+        seq.plot(rf_plot='abs', plot_now=False) # Plot magnitude of RF waveforms in RF mag subplot
+    except Exception as _:
+        print("seq.plot with rf_plot='abs' failed, plotting without it (user might not have latest pypulseq version).\n"
+              "  Note: The non-offset RF pulses will be plotted as real waveforms instead of magnitude, while the\n"
+              "  RF with slice offset will be plotted as the magnitude.")
+        seq.plot(plot_now=False) # If rf_plot='abs' fails, plot without it (user might not have latest pypulseq version)
 
     # Extract waveforms for manual plotting overlaying the waveforms
     br, bi, g    = ppverse._get_padded_waveforms(rf,  gz,  system=system, return_all=False, interp_to_grad_raster=interp_to_grad_raster)
     brv, biv, gv = ppverse._get_padded_waveforms(rfv, gzv, system=system, return_all=False, interp_to_grad_raster=interp_to_grad_raster)
+    brv_offset, biv_offset, gv_offset = ppverse._get_padded_waveforms(rfv_offset, gzv, system=system, return_all=False, interp_to_grad_raster=interp_to_grad_raster)
 
     # Plot input (br, bi, gz) vs results (brv, biv, gzv)
     import matplotlib.pyplot as plt
@@ -75,6 +86,7 @@ def example_verse(type="minsar"):
     plt.subplot(3, 1, 1)
     plt.plot(t, br, label='Input B1+ real', linestyle='--')
     plt.plot(tv, brv, label='Output B1+ real')
+    plt.plot(tv, brv_offset, label='Output B1+ real (slice offset)')
     plt.title('RF Real Part')
     plt.xlabel('Time (ms)')
     plt.ylabel('Amplitude (Hz)')
@@ -82,6 +94,7 @@ def example_verse(type="minsar"):
     plt.subplot(3, 1, 2)
     plt.plot(t, bi, label='Input B1+ imaginary', linestyle='--')
     plt.plot(tv, biv, label='Output B1+ imaginary')
+    plt.plot(tv, biv_offset, label='Output B1+ imaginary (slice offset)')
     plt.title('RF Imaginary Part')
     plt.xlabel('Time (ms)')
     plt.ylabel('Amplitude (Hz)')
@@ -94,6 +107,8 @@ def example_verse(type="minsar"):
     plt.ylabel('Amplitude (Hz/m)')
     plt.legend()
     plt.tight_layout()
+
+    # Show both the pypulseq plot and custom plots together
     plt.show()
 
 
@@ -102,5 +117,5 @@ if __name__ == "__main__":
     print("VERSE pypulseq example script")
     print("="*60)
 
-    example_verse(type="minsar")
     example_verse(type="mintime")
+    example_verse(type="minsar")
