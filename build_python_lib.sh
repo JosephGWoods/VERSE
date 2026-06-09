@@ -59,7 +59,7 @@ fi
 
 echo ""
 echo "=========================================="
-echo "VERSE library built successfully!"
+echo "VERSE python library built successfully!"
 echo ""
 echo "To install the Python package, run:"
 echo "  pip install -e ."

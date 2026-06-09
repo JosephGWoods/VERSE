@@ -1,30 +1,90 @@
 # VERSE
 
-Variable-rate Selective Excitation (VERSE) algorithms and helpers in C, MATLAB, and Python, including pypulseq integration.
+Variable-rate Selective Excitation (VERSE) algorithms and helpers in C, MATLAB, and Python, including **PyPulseq** integration.
+
+## Simple usage with PyPulseq
+
+```python
+import pypulseq as pp
+import pyverse_pulseq as ppverse # The pypulseq-compatible VERSE library
+from math import pi
+
+# Set limits
+system = pp.Opts(max_grad=80, grad_unit="mT/m", max_slew=200, slew_unit="T/m/s")
+seq = pp.Sequence(system)
+
+# Generate high time-bandwidth product Sinc pulse
+rf, gz, gzr = pp.make_sinc_pulse(
+    flip_angle      = pi/2,
+    apodization     = 0.5,
+    slice_thickness = 5.0e-3,
+    time_bw_product = 10,
+    return_gz       = True
+)
+
+# Minimum time VERSE algorithm
+rfv, gzv = ppverse.verse(rf, gz, type="mintime", system=system)
+
+# Add non-linear phase ramp for slice-offset to RF waveform
+rfv_offset = ppverse.apply_offcenter_phase(rfv, gzv, offset=1e-3, system=system)
+
+# Build sequence and plot
+seq.add_block(rf, gz)
+seq.add_block(gzr)
+seq.add_block(rfv, gzv)
+seq.add_block(gzr)
+seq.add_block(rfv_offset, gzv)
+seq.add_block(gzr)
+seq.plot(rf_plot='abs')
+```
+<table>
+  <tr>
+    <td align="left">
+      <img src="examples/python/media/minimumTimeRF.png" width="500"><br>
+    </td>
+    <td align="right">
+      <img src="examples/python/media/minimumTimeGrad.png" width="500"><br>
+    </td>
+  </tr>
+</table>
+
+```python
+# Minimum SAR (fixed-duration) VERSE algorithm
+rfv, gzv = ppverse.verse(rf, gz, type="minsar", system=system)
+
+# Add non-linear phase ramp for slice-offset to RF waveform
+rfv_offset = ppverse.apply_offcenter_phase(rfv, gzv, offset=1e-3, system=system)
+
+# Build sequence and plot
+seq.add_block(rf, gz)
+seq.add_block(gzr)
+seq.add_block(rfv, gzv)
+seq.add_block(gzr)
+seq.add_block(rfv_offset, gzv)
+seq.add_block(gzr)
+seq.plot(rf_plot='abs')
+```
+<table>
+  <tr>
+    <td align="left">
+      <img src="examples/python/media/minimumSARRF.png" width="500"><br>
+    </td>
+    <td align="right">
+      <img src="examples/python/media/minimumSARGrad.png" width="500"><br>
+    </td>
+  </tr>
+</table>
 
 ## Features
 - Minimum-time VERSE (mintverse)
 - Minimum-SAR VERSE (minsarverse; fixed duration)
-- Core C implementation for performance
+- Core C implementation for multi-language usage
 - MATLAB:
   - Pure MATLAB implementations: `mintverse.m`, `minsarverse.m`
   - MEX wrappers around the C library: `mintverse_c.m`, `minsarverse_c.m`
 - Python:
   - ctypes wrapper around the C library: `pyverse_c.py`
   - pypulseq helpers: `pyverse_pulseq.py`
-
-## Repository layout
-- `c/` — C core (`verse.c`, `verse.h`)
-- `matlab/` — MATLAB API (pure and MEX wrappers)
-- `python/` — Python API (ctypes + pypulseq helpers)
-- `build_python_lib.sh` — Build script for Python shared library
-- `build_matlab_mex.m` — Build script for MATLAB MEX files
-- `archive/` — Legacy/testing implementations
-
-## Requirements
-- C compiler (gcc/clang/MSVC)
-- MATLAB R2018a+ recommended (MEX compiled with `-R2017b` API)
-- Python 3.8+ (NumPy, SciPy, matplotlib, pypulseq)
 
 ## Installation
 
@@ -63,45 +123,32 @@ If no compiler is configured, run:
 mex -setup C
 ```
 
-## Usage
+## Usage: MATLAB
 
-### Python (pypulseq)
-```python
-import numpy as np
-import pypulseq as pp
-from pyverse_pulseq import verse, calculateoffcenterphase
-
-system = pp.Opts()
-rf, gz, gzr = pp.make_sinc_pulse(
-    flip_angle      = np.deg2rad(90),
-    duration        = 4e-3,
-    slice_thickness = 5e-3,
-    return_gz       = True,
-    system          = system
-)
-
-# Minimum-time VERSE
-rfv, gv = verse(rf=rf, grad=gz, system=system, type="mintime")
-
-# Minimum-SAR VERSE
-rfv, gv = verse(rf=rf, grad=gz, system=system, type="minsar")
-
-# Off-center slice (example: 20 mm)
-rfv_offset = apply_offcenter_phase(rfv, gv, offset=20e-3, system=system)
-```
-
-### MATLAB
 Pure MATLAB:
 ```matlab
 [b1v, gv] = mintverse(b1, g, dt, bmax, gmax, smax); % minimum-time
 [b1v, gv] = minsarverse(b1, g, dt, gmax, smax);     % minimum-SAR
 ```
 
-C-accelerated (after building MEX):
+Mexed C-code (after building MEX):
 ```matlab
 [b1v, gv] = mintverse_c(b1, g, dt, bmax, gmax, smax);
 [b1v, gv] = minsarverse_c(b1, g, dt, gmax, smax);
 ```
+
+## Repository layout
+- `c/` — C core (`verse.c`, `verse.h`)
+- `matlab/` — MATLAB API (pure and MEX wrappers)
+- `python/` — Python API (ctypes + pypulseq helpers)
+- `build_python_lib.sh` — Build script for Python shared library
+- `build_matlab_mex.m` — Build script for MATLAB MEX files
+- `archive/` — Legacy/testing implementations
+
+## Requirements
+- C compiler (gcc/clang/MSVC)
+- MATLAB R2018a+ recommended (MEX compiled with `-R2017b` API)
+- Python 3.8+ (NumPy, SciPy, matplotlib, pypulseq)
 
 ## License
 See `LICENSE`
