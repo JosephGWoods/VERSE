@@ -78,7 +78,7 @@ _lib.mintverse.argtypes = [
 _lib.mintverse.restype = None
 
 
-def calculateoffcenterphase(g, offset, nrf, rfup, gup, gamma):
+def calculateoffcenterphase(g: np.ndarray, offset: float, nrf: int, rfup: int, gup: int, gamma: float):
     """
     Calculate off-center slice RF phase waveform for an arbitrary gradient.
 
@@ -133,7 +133,7 @@ def calculateoffcenterphase(g, offset, nrf, rfup, gup, gamma):
     return phase
 
 
-def minsarverse(br, bi, g, dt, gmax, smax):
+def minsarverse(br: np.ndarray, bi: np.ndarray, g: np.ndarray, dt: float, gmax: float, smax: float):
     """
     Convert an RF/gradient pair to the minimum-SAR VERSE equivalent pair.
     
@@ -200,7 +200,7 @@ def minsarverse(br, bi, g, dt, gmax, smax):
     return brv, biv, gv
 
 
-def mintverse(br, bi, g, dt, bmax, gmax, smax, emax=-1.0):
+def mintverse(br: np.ndarray, bi: np.ndarray, g: np.ndarray, dt: float, bmax: float, gmax: float, smax: float, emax: float = -1.0):
     """
     Convert an RF/gradient pair to the minimum-time VERSE equivalent pair.
     
