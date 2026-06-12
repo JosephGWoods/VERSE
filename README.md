@@ -15,9 +15,9 @@ seq = pp.Sequence(system)
 
 # Generate high time-bandwidth product Sinc pulse
 rf, gz, gzr = pp.make_sinc_pulse(
-    flip_angle      = pi/2,
+    flip_angle      = pi/2,   # 90° (rad)
     apodization     = 0.5,
-    slice_thickness = 5.0e-3,
+    slice_thickness = 5.0e-3, # 5 mm (m)
     time_bw_product = 10,
     return_gz       = True
 )
@@ -25,7 +25,7 @@ rf, gz, gzr = pp.make_sinc_pulse(
 # Minimum time VERSE algorithm
 rfv, gzv = ppverse.verse(rf, gz, type="mintime", system=system)
 
-# Add non-linear phase ramp for slice-offset to RF waveform
+# Add non-linear phase ramp for 1 mm slice-offset to RF waveform
 rfv_offset = ppverse.apply_offcenter_phase(rfv, gzv, offset=1e-3, system=system)
 
 # Build sequence and plot
@@ -52,7 +52,7 @@ seq.plot(rf_plot='abs')
 # Minimum SAR (fixed-duration) VERSE algorithm
 rfv, gzv = ppverse.verse(rf, gz, type="minsar", system=system)
 
-# Add non-linear phase ramp for slice-offset to RF waveform
+# Add non-linear phase ramp for 1 mm slice-offset to RF waveform
 rfv_offset = ppverse.apply_offcenter_phase(rfv, gzv, offset=1e-3, system=system)
 
 # Build sequence and plot
@@ -89,21 +89,24 @@ seq.plot(rf_plot='abs')
 ## Installation
 
 ### Python
+
+Build the C shared library used by the ctypes wrapper:
+```bash
+bash build_python_lib.sh
+```
+
 Install the package:
 ```bash
 pip install .
 ```
 
-Optionally build the C shared library used by the ctypes wrapper:
-```bash
-bash build_python_lib.sh
-```
-This produces:
+build_python_lib.sh produces:
 - Linux: `python/libverse.so`
 - macOS: `python/libverse.dylib`
 - Windows (MSYS/Cygwin): `python/verse.dll`
 
 ### MATLAB
+
 Pure MATLAB functions require no build:
 - `matlab/mintverse.m`
 - `matlab/minsarverse.m`
@@ -138,6 +141,7 @@ Mexed C-code (after building MEX):
 ```
 
 ## Repository layout
+
 - `c/` — C core (`verse.c`, `verse.h`)
 - `matlab/` — MATLAB API (pure and MEX wrappers)
 - `python/` — Python API (ctypes + pypulseq helpers)
@@ -146,11 +150,13 @@ Mexed C-code (after building MEX):
 - `archive/` — Legacy/testing implementations
 
 ## Requirements
+
 - C compiler (gcc/clang/MSVC)
 - MATLAB R2018a+ recommended (MEX compiled with `-R2017b` API)
 - Python 3.8+ (NumPy, SciPy, matplotlib, pypulseq)
 
 ## License
+
 See `LICENSE`
 
 ## References
